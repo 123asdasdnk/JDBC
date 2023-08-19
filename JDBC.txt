@@ -1,0 +1,639 @@
+JDBC是什么？JDBC英文名为：Java Data Base Connectivity(Java数据库连接)，官方解释它是Java编程语言和广泛的数据库之间独立于数据库的连接标准的Java API，根本上说JDBC是一种规范，它提供的接口，一套完整的，允许便捷式访问底层数据库。可以用JAVA来写不同类型的可执行文件：JAVA应用程序、JAVA Applets、Java Servlet、JSP等，不同的可执行文件都能通过JDBC访问数据库，又兼备存储的优势。简单说它就是Java与数据库的连接的桥梁或者插件，用Java代码就能操作数据库的增删改查、存储过程、事务等。
+
+我们可以发现，JDK自带了一个java.sql包，而这里面就定义了大量的接口，不同类型的数据库，都可以通过实现此接口，编写适用于自己数据库的实现类。而不同的数据库厂商实现的这套标准，我们称为数据库驱动
+
+
+import java.sql.*;  
+  
+public class Main {  
+    public static void main(String[] args){  
+        //1. 通过DriverManager来获得数据库连接  
+        try (Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+  
+             //2. 创建一个用于执行SQL的Statement对象  
+             Statement statement = connection.createStatement()){   //注意前两步都放在try()中，因为在最后需要释放资源！  
+  
+            //3. 执行SQL语句，并得到结果集  
+            ResultSet set = statement.executeQuery("select * from student");  
+  
+            //4. 查看结果  
+            while (set.next()){  
+                System.out.println(set.getString(1));  
+  
+            }  
+        }catch (SQLException e){  
+            e.printStackTrace();  
+        }  
+//5. 释放资源，try-with-resource语法会自动帮助我们close  
+  
+    }  
+}
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+我们首先来了解一下DriverManager是什么东西，它其实就是管理我们的数据库驱动的一种类。
+
+DriverManager在java.sql这个包里面,管理一组 JDBC 驱动程序的基本服务
+
+要通过DriverManager来建立数据库的驱动
+通过它所带的getConnection()来进行数据库连接
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+1.Connection
+
+Connection是数据库的连接对象，可以通过连接对象来创建一个Statement用于执行SQL语句
+
+Connection connection = DriverManager.getConnection(  
+"jdbc:mysql://localhost:3306/test","root","ysc2265495098");
+注意会抛异常，要处理
+
+
++ 这样创建 Statement :
+Statement createStatement() throws SQLException;
+
++ 我们发现除了普通的Statement，还存在PreparedStatement：
+
+PreparedStatement prepareStatement(String sql) throws SQLException;
+
+在后面我们会详细介绍PreparedStatement的使用，它能够有效地预防SQL注入式攻击。
+
+它还支持事务的处理，也放到后面来详细进行讲解
+
+
+2.Statement
+
+用于执行SQL语句的类
+
+
+我们发现，我们之前使用了
++  executeQuery()方法来执行select语句，此方法返回给我们一个ResultSet对象，查询得到的数据，就存放在ResultSet中！
+
+解释：executeQuery()是专门执行DQL语句的方法，会返回一个ResultSet（集合）对象，要查询的数据就在这个表对象里
+
++ Statement除了执行这样的DQL语句外，我们还可以使用executeUpdate()方法来执行一个DML或是DDL语句，它会返回一个int类型，表示执行后受影响的行数，可以通过它来判断DML语句是否执行成功。
+
++ 也可以通过excute()来执行任意的SQL语句，它会返回一个boolean来表示执行结果是一个ResultSet还是一个int，我们可以通过使用getResultSet()或是getUpdateCount()来获取。
+-------------------------------- 
++ **当我们创建了Statement对象后，我们看看里面的方法：
+
+先创建Statemenet对象
+Statement statement = connection.createStatement();
+
+1.executeQuery();
+
+statement.executeQuery();
+执行查询语句(DQL的select)
+
+返回值为一个ResultSet的对象，我们可以从ResultSet对象里面取数据
+
+2.getConnecion();
+
+statement.getConnnection();
+获取statement所依附的Connetcion对象
+
+3.execute();
+可以执行任意类型的SQL语句
+
+返回类型为Boolean:
+如果是true,那么就表示返回的是ResultSet
+且用getResultSet()获取结果
+
+如果是false，那么就表示返回的是int(就代表改变了几行)
+且用getUpdateCount()获取结果
+
+
+
+4.executeUpdate();
+更新操作
+
+返回类型为int，表示改变了几行就像
+DDL或DML里面的一些操作只会告诉你变了几行
+
+5.executeLargeUpdate();
+
+同上，但是返回的是long
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+1.DML
+
+插入 删除 更新 用executeUpdate("SQl语句");//其中SQl语句就像命令行那样正常写就可以了
+
+
++ 插入
+import java.sql.* ;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+        Statement statement=connection.createStatement()){  
+  
+          int i =  statement.executeUpdate("insert into student values(20229,'小叶','男',19)");//  
+            System.out.println("生效了"+i+"行");  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+
++ 删除
+import java.sql.* ;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+        Statement statement=connection.createStatement()){  
+  
+          int i= statement.executeUpdate("delete from student where sid=20228");  
+            System.out.println("生效了"+i+"行");  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+
++ 更新
+import java.sql.* ;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+        Statement statement=connection.createStatement()){  
+  
+          int i= statement.executeUpdate("update student set name='小芳' where sid=20226");  
+            System.out.println("生效了"+i+"行");  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+
+
+2.DQL 
+查询
+
+使用之前讲的 connection.executeQuery("SQl语句");这样会把查询结果以ResultSet对象的返回，所以我们还要用Result 对象去接收
+
+
+import java.sql.* ;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+        Statement statement=connection.createStatement()){  
+        ResultSet set = statement.executeQuery("select * from student ");  
+  
+        while(set.next() ){ //使用next()这个方法，可以让指针往后移，类似于迭代器 
+            System.out.println(set.getInt(1)); 
+            System.out.println(set.getInt("sid") );  
+            System.out.println(set.getString("sid") );  
+        }  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+**注意：
+
+我们看看上面这个例子，因为我们要打印sid，是Integer型的数据，所以我们可以使用set.getInt(int|String);
+有两种使用形式:
+第一种:set.getInt(1) 就是直接把sid的列数作为参数传到getInt()里面
+第二种:set.getInt("sid")就是直接把我们要查询的属性作为参数传进去
+
+当然我们这里还要第三种: set.getString("sid"),但是有区别，这个的返回结果是Stringe类型的,而上面getInt()是返回Int类型的（当然这里返回的sid就是String类型的，而不是int类型的）
+（其实set.getString()也可以以int为参数）
+
+是选择getInt() 还是getString()，看主要看你要查看的属性是上面类型的
+
+next()方法的原理：返回类型为Boolean
+![[Pasted image 20230819204228.png]]
+
+再来一个getString()的例子
+import java.sql. * ;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+        Statement statement=connection.createStatement()){  
+        ResultSet set = statement.executeQuery("select * from student ");  
+  
+        while(set.next() ){  
+            System.out.println(set.getInt(1));  
+            System.out.println(set.getString("name"));  
+            System.out.println(set.getString(3));  
+        }  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+
+
+3.批行处理
+
+当我们要进行很多插入删除更新之类的操作时，如果我们每次操作都用exxecuteUpdate("SQl")；那么计算机的处理效率会很低
+
+所以我们可以使用批行处理，一次性全做完
+
+import java.sql.* ;   
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement=connection.createStatement()){  
+  
+            statement.executeUpdate("insert into teach values(1,20221)");  
+            statement.executeUpdate("insert into teach values(1,20222)");  
+            statement.executeUpdate("insert into teach values(2,20223)");  
+            statement.executeUpdate("insert into teach values(2,20224)");  
+            statement.executeUpdate("insert into teach values(2,20225)");  
+  
+  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+
+
+改进：
+import java.sql.* ;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement=connection.createStatement()){  
+  
+           statement.addBatch("insert into teach values(1,20221)"); 
+           statement.addBatch("insert into teach values(1,20222)");  
+           statement.addBatch("insert into teach values(2,20223)");  
+           statement.addBatch("insert into teach values(2,20224)");  
+           statement.addBatch("insert into teach values(2,20225)");  
+  
+           statement.executeBatch();
+  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+我们可以使用addBatch()将SQL语句先储存起来，最后我们使用executeBatch()方法将所有的SQL语句一起执行
+++++++++++++++++++++++++++++++++++++++++++++++
+既然我们现在可以从数据库中获取数据了，那么现在就可以将这些数据转换为一个类来进行操作
+
+先定义Student类：
+public class Student {  
+    Integer sid;  
+    String name;  
+    String sex;  
+    int age;  
+    Student(Integer sid, String name, String sex, int age){  
+        this.sid = sid;  
+        this.name = name;  
+        this.sex = sex;  
+        this.age = age;  
+    }  
+    public void say(){  
+        System.out.println("我叫:" +name+ " 学号:" +sid+ " 性别:" +sex+ " 年龄:" +age );  
+    }  
+}
+
+
+然后：
+import java.sql.*;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement=connection.createStatement()){  
+  
+  
+           ResultSet set = statement.executeQuery("select * from student");  
+  
+           while(set.next()){  
+            Student student = new Student(set.getInt(1),set.getString(2),set.getString(3),set.getInt(4) ); //关键 
+            student.say();  
+           }  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+直接再创建对象的时候将读取到的内容传到构造函数里面去
+
+
+还有进阶的一种写法，不过要用到反射了，没学等以后在来补充
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+import java.sql.* ;  
+import java.util.Scanner;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement=connection.createStatement();  
+            Scanner scanner =new Scanner(System.in) ){  
+  
+  
+           ResultSet res = statement.executeQuery("select * from user where username='"+ scanner.nextLine()+"'and pwd='"+ scanner.nextLine()+"';");
+           while(res.next()) {  
+               String username = res.getString(1);  
+               System.out.println(username + "登陆成功");  
+           }  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+//利用你输入的账号和密码是否存在，可以决定是否有数据被读取到ResultSet对象里面，从而决定
+
+当我们输入
+test
+123456
+
+时，结果为： test登陆成功
+
+
+但是有个问题：
+如果我们输入这个呢？
+
+Test 
+1111' or 1=1; --
+
+也显示：test登陆成功
+奇怪了？为什么我们明明没有输入正确为什么还登陆成功了呢？
+（--表示注释，--后面的都被注释了）
+
+我们可以这么来看：
+
+import java.sql.* ;  
+import java.util.Scanner;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement=connection.createStatement();  
+            Scanner scanner =new Scanner(System.in) ){  
+  
+            String sql="select * from user where username='"+ scanner.nextLine()+"'and pwd='"+ scanner.nextLine()+"';";  
+            System.out.println(sql);  
+           ResultSet res = statement.executeQuery(sql);  
+           while(res.next()) {  
+               String username = res.getString(1);  
+               System.out.println(username + "登陆成功");  
+           }  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+//我们单独输出SQL语句
+当我们输入：
+Test
+1111' or 1=1; --
+
+结果为：
+select * from user where username='Test'and pwd='1111' or 1=1; --';
+*我们从这个字符串里面可以看到 整个where判断为true,所以会有ResultSet对象返回，也就可以显示登陆成功了
+
+上面这种其实就是注入攻击
+
+我们发现，如果允许这样的数据插入，那么我们原有的SQL语句结构就遭到了破坏，使得用户能够随意登陆别人的账号。因此我们可能需要限制用户的输入来防止用户输入一些SQL语句关键字，但是关键字非常多，这并不是解决问题的最好办法。
+
+所以我们可以使用PreparedStatement
+=+++++++++++++++++++++++++++++++++++++++++++++++
+
+import java.sql.* ;  
+import java.util.Scanner;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            PreparedStatement  statement=connection.prepareStatement("select * from user where username=? and pwd=?;") ;  
+            Scanner scanner =new Scanner(System.in) ){  
+  
+            statement.setString(1,scanner.nextLine() );  
+            statement.setString(2,scanner.nextLine() );  
+            ResultSet res = statement.executeQuery();  
+            while(res.next()){  
+                String username = res.getString(1);  
+                System.out.println(username + "登陆成功");  
+            }  
+  
+  
+  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+这里我们使用了PreparedStatement（这个类的对象可以先预处理SQL语句），这样一些结果就要发生改变
+
+好的：
+现在我们来测试一下：
+当我们正常输入：
+test 
+123456
+
+结果为：test登陆成功
+
+当我们不正常输入时，我们SQl注入攻击：
+test
+1111' 1=1; --
+
+我们发现，没有再登陆成功了
+这是为什么呢？
+
+
+我们还是可以打印一下statement：
+System.out.println(statement.toString() );
+
+结果为：
+com.mysql.cj.jdbc.ClientPreparedStatement: select * from user where username= *'* Test *'* and pwd=*'* 1111'' or 1=1; -- *'*;
+我们可以发现：
+计算机自动把我们输入的东西加了个单引号(如，Test有，1111' or 1=1; --也有)
+
+我们输入的参数一旦出现`'`时，会被变为转义形式`\'`，而最外层有一个真正的`'`来将我们输入的内容进行包裹，因此它能够有效地防止SQL注入攻击！
+
+这样插入敏感词就不行了
+
+所以我们尽量使用PreparedStatement,除非一些无关紧要的东西，我们可以用createStatement
++++++++++++++++++++++++++++++++++++++++++
+
+
+JDBC默认的事务处理行为是自动提交，所以前面我们执行一个SQL语句就会被直接提交（相当于没有启动事务），所以JDBC需要进行事务管理时，首先要通过Connection对象调用setAutoCommit(false) 方法, 将SQL语句的提交（commit）由驱动程序转交给应用程序负责。
+
+con.setAutoCommit(); //关闭自动提交后相当于开启事务。 
+// SQL语句 
+// SQL语句 
+// SQL语句
+con.commit();或 con.rollback();
+
+------ 
+import java.sql.* ;  
+import java.util.Scanner;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement = connection.createStatement()){  
+            connection.setAutoCommit(false);
+            //关闭自动提交，才能手动提交，开启事务  
+  
+            statement.executeUpdate("insert into user values('a',1234)");  
+            statement.executeUpdate("insert into user values('b',1234)");  
+            statement.executeUpdate("insert into user values('c',1234)");  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+因为没有commit()所以没有任何效果，并不会插入
+
+但是但我们commit()之后就会插入了：
+  
+import java.sql.* ;  
+import java.util.Scanner;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement = connection.createStatement()){  
+            connection.setAutoCommit(false);  
+  
+            statement.executeUpdate("insert into user values('a',1234)");  
+            statement.executeUpdate("insert into user values('b',1234)");  
+            statement.executeUpdate("insert into user values('c',1234)");  
+            connection.commit();  //注意是Connection里的commit()方法
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+插入成功
+
+  如果你又想在途中有要自动提交可以这样：
+import java.sql.* ;  
+import java.util.Scanner;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement = connection.createStatement()){  
+            connection.setAutoCommit(false);  
+  
+            statement.executeUpdate("insert into user values('a',1234)");  
+            statement.executeUpdate("insert into user values('b',1234)");  
+            connection.setAutoCommit(true);//这样之后的语句又会自动提交了
+            statement.executeUpdate("insert into user values('c',1234)");  
+            connection.commit();  //注意是Connection里的commit()方法
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+我们还可以进行回滚操作：
+  
+import java.sql.* ;  
+import java.util.Scanner;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement = connection.createStatement()){  
+            connection.setAutoCommit(false);  
+  
+            statement.executeUpdate("insert into user values('a',1234)");  
+            statement.executeUpdate("insert into user values('b',1234)");  
+            statement.executeUpdate("insert into user values('c',1234)");  
+            
+            connection.rollback();//之前的操作全部作废  
+            connection.commit();  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+这样就回滚了
+
+
+
+
+当然我们还可以设定回滚点，这样就可以回滚到固定位置：
+
+  
+import java.sql.* ;  
+import java.util.Scanner;  
+  
+public class Main {  
+    public static void main(String[] args) {  
+        try(Connection connection = DriverManager.getConnection(  
+                "jdbc:mysql://localhost:3306/test","root","ysc2265495098");  
+            Statement statement = connection.createStatement()){  
+            connection.setAutoCommit(false);  
+  
+            statement.executeUpdate("insert into user values('a',1234)");  
+  
+            Savepoint savepoint = connection.setSavepoint();//设置回滚点  
+  
+            statement.executeUpdate("insert into user values('b',1234)");  
+            statement.executeUpdate("insert into user values('c',1234)");  
+            connection.rollback(savepoint );//回滚  
+            connection.commit();  
+  
+        }catch(SQLException e){  
+            e.printStackTrace();  
+        }  
+    }  
+}
+这样我们只会回滚到设置回滚点的地方，而回滚点与回滚位置之间的内容都会被回滚，不会生效了
